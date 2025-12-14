@@ -8,6 +8,7 @@ dependencies = [
     "django>=6.0",
     "django-admin-rangefilter>=0.13.5",
     "django-cors-headers>=4.9.0",
+    "matplotlib>=3.10.8",
     "numpy>=2.3.5",
     "pandas>=2.3.3",
     "psycopg2-binary>=2.9.11",

@@ -19,8 +19,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # --- NEW: LOAD CREDENTIALS ---
 try:
-    # This points to: full_stack.../b_credintial/secrets.json
-    SECRETS_PATH = BASE_DIR / 'b_credintial' / 'secrets.json'
+    # This points to: full_stack.../credintial/secrets.json
+    SECRETS_PATH = BASE_DIR / 'server' / 'credintial' / 'secrets.json'
     
     with open(SECRETS_PATH) as f:
         secrets = json.load(f)
@@ -92,12 +92,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': secrets.get('DB_ENGINE', 'django.db.backends.sqlite3'),
-        'NAME': secrets.get('DB_NAME', BASE_DIR / 'db.sqlite3'),
-        'USER': secrets.get('DB_USER', ''),
-        'PASSWORD': secrets.get('DB_PASSWORD', ''),
-        'HOST': secrets.get('DB_HOST', ''),
-        'PORT': secrets.get('DB_PORT', ''),
+        'ENGINE': secrets.get('DB_ENGINE'),
+        'NAME': secrets.get('DB_NAME'),
+        'USER': secrets.get('DB_USER'),
+        'PASSWORD': secrets.get('DB_PASSWORD'),
+        'HOST': secrets.get('DB_HOST'),
+        'PORT': secrets.get('DB_PORT'),
     }
 }
 

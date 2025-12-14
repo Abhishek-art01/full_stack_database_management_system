@@ -1,9 +1,0 @@
-1. uv run python -m django startproject config server ## to start the projectpython -m django: Instead 
-of looking for a script file (which is failing),this tells Python to "find the installed Django library and run it." It bypasses the path error entirely.
-
-2. uv run python server/manage.py runserver ## to run the project
-
-3. uv run python server/manage.py migrate ## to migrate the project:It reads the default instructions and 
-creates the necessary tables in your db.sqlite3 file. You will see a list of "OK" messages.
-
-4. uv run python server/manage.py createsuperuser ## to create a superuser
