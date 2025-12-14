@@ -2,6 +2,9 @@ from django.http import JsonResponse
 from datetime import datetime, timedelta
 import calendar
 from .models import MISReport # Import your model
+from django.db.models import Count
+from .models import T3AddressLocality, T3Locality, T3BillingKM
+import json
 
 def get_report_for_month(year, month_name):
     """
@@ -83,3 +86,58 @@ def dashboard_data(request):
         }
     }
     return JsonResponse(data)
+
+
+
+def locality_master_data(request):
+    """Returns all valid localities and their zones for the dropdown"""
+    # We send the zone along with the name so frontend can auto-fill immediately
+    data = list(T3Locality.objects.values('id', 'locality_name', 'billing_zone'))
+    return JsonResponse({'localities': data})
+
+def get_pending_address(request):
+    """Fetches the next address that needs a locality"""
+    # 1. Get Count
+    pending_count = T3AddressLocality.objects.filter(assigned_locality__isnull=True).count()
+    
+    # 2. Get One Record
+    next_item = T3AddressLocality.objects.filter(assigned_locality__isnull=True).first()
+    
+    if next_item:
+        return JsonResponse({
+            'found': True,
+            'pending_count': pending_count,
+            'data': {
+                'id': next_item.id,
+                'address': next_item.pickup_address
+            }
+        })
+    else:
+        return JsonResponse({'found': False, 'pending_count': 0})
+
+def get_billing_km(request):
+    """Finds KM based on Zone"""
+    zone = request.GET.get('zone')
+    try:
+        record = T3BillingKM.objects.get(billing_zone=zone)
+        return JsonResponse({'km': record.billing_km})
+    except T3BillingKM.DoesNotExist:
+        return JsonResponse({'km': 0}) # Or handle error
+
+def save_address_mapping(request):
+    """Saves the selected locality to the address"""
+    if request.method == "POST":
+        data = json.loads(request.body)
+        address_id = data.get('address_id')
+        locality_id = data.get('locality_id')
+        
+        try:
+            address_row = T3AddressLocality.objects.get(id=address_id)
+            address_row.assigned_locality_id = locality_id
+            address_row.status = "Completed"
+            address_row.save()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+            
+    return JsonResponse({'success': False, 'error': "Invalid Method"})

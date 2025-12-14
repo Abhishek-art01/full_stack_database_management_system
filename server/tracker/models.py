@@ -55,3 +55,33 @@ class MISReport(models.Model):
     class Meta:
         verbose_name = "MIS Workflow"
         verbose_name_plural = "MIS Workflows"
+
+
+# ... existing imports and MISReport model ...
+
+class T3Locality(models.Model):
+    locality_name = models.CharField(max_length=255)
+    billing_zone = models.CharField(max_length=100) # e.g., "South Delhi", "Zone A"
+
+    def __str__(self):
+        return self.locality_name
+
+class T3BillingKM(models.Model):
+    billing_zone = models.CharField(max_length=100)
+    billing_km = models.FloatField()
+
+    def __str__(self):
+        return f"{self.billing_zone} - {self.billing_km}km"
+
+class T3AddressLocality(models.Model):
+    # The raw address data
+    pickup_address = models.TextField()
+    
+    # The field we need to update (nullable initially)
+    assigned_locality = models.ForeignKey(T3Locality, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    # Metadata
+    status = models.CharField(max_length=20, default="Pending") # Pending, Completed
+    
+    def __str__(self):
+        return self.pickup_address[:50]

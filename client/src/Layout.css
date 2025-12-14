@@ -1,0 +1,101 @@
+/* Header Layout */
+.app-header {
+    background-color: #2c3e50;
+    color: white;
+    padding: 0 20px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    /* This ensures space between left (brand), middle (nav), right (logout) */
+    justify-content: space-between;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* 1. The "3 Lines" Icon Style */
+.menu-toggle {
+    font-size: 1.5rem;
+    cursor: pointer;
+    margin-right: 15px;
+    padding: 5px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.menu-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.header-brand {
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-right: auto;
+    /* Pushes everything else to the right if needed */
+    display: flex;
+    align-items: center;
+}
+
+.header-nav {
+    display: flex;
+    gap: 5px;
+    margin: 0 20px;
+}
+
+.header-nav button {
+    background: transparent;
+    border: none;
+    color: #bdc3c7;
+    padding: 8px 15px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.header-nav button:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.header-nav button.active {
+    background-color: #3498db;
+    color: white;
+}
+
+/* 2. Logout Section Styles */
+.logout-section {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    /* Divider line */
+    padding-left: 15px;
+}
+
+.user-greeting {
+    font-size: 0.85rem;
+    color: #bdc3c7;
+}
+
+.logout-btn {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.2s;
+}
+
+.logout-btn:hover {
+    background-color: #c0392b;
+}
