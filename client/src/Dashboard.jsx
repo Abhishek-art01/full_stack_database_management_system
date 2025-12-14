@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
+// 1. IMPORT useNavigate
+import { useNavigate } from 'react-router-dom';
 import './Dashboard.css';
 
 export default function Dashboard() {
+    // 2. INITIALIZE the hook
+    const navigate = useNavigate();
+
     const [filterDate, setFilterDate] = useState(new Date().toISOString().slice(0, 7));
     const [data, setData] = useState(null);
 
@@ -33,7 +38,6 @@ export default function Dashboard() {
                 <h2 style={{ borderBottom: '2px solid #eee', paddingBottom: '10px' }}>
                     {month} {year}
                     {report.found ?
-                        // Notice the space and pipe character here inside the text
                         <span className="badge-progress"> | {report.progress}% Done</span> :
                         <span className="badge-missing"> | No Report Found</span>
                     }
@@ -55,7 +59,7 @@ export default function Dashboard() {
                         {/* Final MIS */}
                         {renderStageNode("Final MIS", "Submission", report.final.mis_status)}
 
-                        {/* Bill Approval (New!) */}
+                        {/* Bill Approval */}
                         {renderStageNode("Bill Approval", "Finance", report.final.bill_approval)}
                     </div>
                 )}
@@ -72,6 +76,19 @@ export default function Dashboard() {
                     value={filterDate}
                     onChange={e => setFilterDate(e.target.value)}
                 />
+            </div>
+
+            {/* Quick Actions Toolbar */}
+            <div style={{ display: 'flex', gap: '10px', marginTop: '15px', marginBottom: '30px' }}>
+                <button onClick={() => navigate('/locality-checker')} style={{ padding: '8px 12px', cursor: 'pointer', background: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '4px' }}>
+                    📍 Locality
+                </button>
+                <button onClick={() => navigate('/gps-checker')} style={{ padding: '8px 12px', cursor: 'pointer', background: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '4px' }}>
+                    🛰️ GPS
+                </button>
+                <button onClick={() => navigate('/downloads')} style={{ padding: '8px 12px', cursor: 'pointer', background: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '4px' }}>
+                    📂 Downloads
+                </button>
             </div>
 
             {renderMonthSection(data.current, true)}
