@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Portal | Login</title>
+    <style>
+        /* --- CORE VARIABLES & RESET --- */
+        :root {
+            --primary: #6c5ce7;
+            --secondary: #a29bfe;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --text-color: #ffffff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+
+        body {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: var(--bg-gradient);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- BACKGROUND ANIMATION SQUARES --- */
+        .shape {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 0;
+            animation: float 6s infinite ease-in-out alternate;
+        }
+        .shape-1 { top: -50px; left: -50px; width: 300px; height: 300px; background: #ff7675; }
+        .shape-2 { bottom: -50px; right: -50px; width: 350px; height: 350px; background: #00cec9; animation-delay: -3s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(20px, 40px); }
+        }
+
+        /* --- GLASS LOGIN CARD --- */
+        .login-card {
+            width: 400px;
+            padding: 50px 40px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            z-index: 1;
+            text-align: center;
+            color: var(--text-color);
+        }
+
+        .login-card h2 {
+            margin-bottom: 30px;
+            font-size: 2rem;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        /* --- FLOATING INPUT FIELDS --- */
+        .input-group {
+            position: relative;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px 0;
+            font-size: 16px;
+            color: #fff;
+            margin-bottom: 5px;
+            border: none;
+            border-bottom: 2px solid var(--glass-border);
+            outline: none;
+            background: transparent;
+            transition: 0.3s;
+        }
+
+        .input-group label {
+            position: absolute;
+            top: 0;
+            left: 0;
+            padding: 10px 0;
+            font-size: 16px;
+            color: #ddd;
+            pointer-events: none;
+            transition: 0.3s ease-out;
+        }
+
+        /* Animation when typing */
+        .input-group input:focus ~ label,
+        .input-group input:valid ~ label {
+            top: -20px;
+            font-size: 12px;
+            color: #00cec9;
+        }
+
+        .input-group input:focus {
+            border-bottom: 2px solid #00cec9;
+        }
+
+        /* --- BUTTONS --- */
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-login:hover {
+            background: #fff;
+            transform: scale(1.02);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+        }
+
+        .links {
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .links a {
+            color: #ddd;
+            text-decoration: none;
+            margin: 0 10px;
+            transition: 0.3s;
+        }
+        .links a:hover { color: #fff; text-decoration: underline; }
+
+    </style>
+</head>
+<body>
+
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+
+    <div class="login-card">
+        <h2>Welcome Back</h2>
+        
+        <form method="POST">
+            {% csrf_token %}  <div class="input-group">
+                <input type="text" name="username" required>
+                <label>Username</label>
+            </div>
+
+            <div class="input-group">
+                <input type="password" name="password" required>
+                <label>Password</label>
+            </div>
+
+            <button type="submit" class="btn-login">Login</button>
+
+            <div class="links">
+                <a href="#">Forgot Password?</a>
+                <a href="#">Create Account</a>
+            </div>
+        </form>
+    </div>
+
+</body>
+</html>

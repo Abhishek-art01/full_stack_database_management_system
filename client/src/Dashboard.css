@@ -1,0 +1,35 @@
+.badge-progress {
+    background: #e1f5fe;
+    color: #0288d1;
+    font-size: 0.8rem;
+    padding: 5px 10px;
+    border-radius: 12px;
+    margin-left: 15px;
+    vertical-align: middle;
+}
+
+.badge-missing {
+    background: #ffebee;
+    color: #c62828;
+    font-size: 0.8rem;
+    padding: 5px 10px;
+    border-radius: 12px;
+    margin-left: 15px;
+    vertical-align: middle;
+}
+
+.divider {
+    text-align: center;
+    border-top: 2px dashed #ccc;
+    margin: 40px 0;
+    height: 0;
+}
+
+.divider span {
+    background: white;
+    padding: 0 10px;
+    position: relative;
+    top: -12px;
+    color: #999;
+    font-weight: bold;
+}
