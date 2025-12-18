@@ -78,19 +78,6 @@ export default function Dashboard() {
                 />
             </div>
 
-            {/* Quick Actions Toolbar */}
-            <div style={{ display: 'flex', gap: '10px', marginTop: '15px', marginBottom: '30px' }}>
-                <button onClick={() => navigate('/locality-checker')} style={{ padding: '8px 12px', cursor: 'pointer', background: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '4px' }}>
-                    📍 Locality
-                </button>
-                <button onClick={() => navigate('/gps-checker')} style={{ padding: '8px 12px', cursor: 'pointer', background: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '4px' }}>
-                    🛰️ GPS
-                </button>
-                <button onClick={() => navigate('/downloads')} style={{ padding: '8px 12px', cursor: 'pointer', background: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '4px' }}>
-                    📂 Downloads
-                </button>
-            </div>
-
             {renderMonthSection(data.current, true)}
 
             <div className="divider"><span>PREVIOUS MONTH</span></div>
