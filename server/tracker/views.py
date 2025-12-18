@@ -1,23 +1,56 @@
-from django.http import JsonResponse
-from datetime import datetime, timedelta
-import calendar
-from .models import MISReport # Import your model
-from django.db.models import Count
-from django.core.paginator import Paginator
-from django.db.models import Q
-from .models import T3AddressLocality, T3LocalityMaster, T3BillingKM
+import logging
 import json
-from django.views.decorators.csrf import csrf_exempt  
+import calendar
+from datetime import datetime, timedelta
+from django.http import JsonResponse
+from django.core.paginator import Paginator
+from django.db.models import Count, Q, Max
+from django.views.decorators.csrf import csrf_exempt
 
+# IMPORT YOUR MODELS
+from .models import MISReport, T3Locality, T3BillingZone, T3BillingKM
+
+logger = logging.getLogger(__name__)
+
+# ==========================================
+# HELPER: SMART MATCHING (Fixes "South" vs "South Zone")
+# ==========================================
+def normalize(text):
+    """Removes spaces, lowercase, and strips 'zone' for fuzzy matching."""
+    if not text: return ""
+    # 1. Basic cleanup
+    text = str(text).strip().lower()
+    # 2. Remove common suffixes to help matching
+    text = text.replace(" zone", "").replace(" billing", "").strip()
+    return text
+
+def create_lookup_dict(queryset, key_field, val_field):
+    """
+    Creates a dictionary where the key is the 'normalized' version of the field.
+    This allows us to find 'South Zone' even if we search for 'South'.
+    """
+    lookup = {}
+    data = list(queryset.values(key_field, val_field))
+    
+    for item in data:
+        raw_key = item[key_field]
+        val = item[val_field]
+        if raw_key:
+            # Store normalized key -> value
+            clean_key = normalize(raw_key)
+            lookup[clean_key] = val
+            
+            # ALSO store exact key -> value (just in case)
+            lookup[raw_key] = val
+            
+    return lookup
+
+# ==========================================
+# 1. DASHBOARD & REPORTING
+# ==========================================
 def get_report_for_month(year, month_name):
-    """
-    Tries to find the MISReport in the DB. 
-    If not found, returns empty/default values.
-    """
     try:
         report = MISReport.objects.get(billing_year=year, billing_month=month_name)
-        
-        # Calculate Progress Percent based on your admin logic
         total_steps = 8
         completed = sum([
             report.stage1_locality_set, report.stage1_gps_check,
@@ -51,31 +84,26 @@ def get_report_for_month(year, month_name):
         return {"found": False, "progress": 0}
 
 def dashboard_data(request):
-    # 1. Get requested date or default to now
     req_year = request.GET.get('year')
-    req_month = request.GET.get('month') # e.g., "12"
+    req_month = request.GET.get('month')
 
     if req_year and req_month:
         current_date = datetime(int(req_year), int(req_month), 1)
     else:
         current_date = datetime.now()
 
-    # 2. Setup Current & Previous Month Text
     curr_year = current_date.year
     curr_month_idx = current_date.month
     curr_month_name = calendar.month_name[curr_month_idx]
     
-    # Previous Month Math
     first_day = current_date.replace(day=1)
     prev_date = first_day - timedelta(days=1)
     prev_year = prev_date.year
     prev_month_name = calendar.month_name[prev_date.month]
 
-    # 3. Query DB for BOTH months
     current_report_data = get_report_for_month(curr_year, curr_month_name)
     prev_report_data = get_report_for_month(prev_year, prev_month_name)
 
-    # 4. Send JSON
     data = {
         "current": {
             "month": curr_month_name,
@@ -91,159 +119,262 @@ def dashboard_data(request):
     return JsonResponse(data)
 
 
+# ==========================================
+# 2. LOCALITY MANAGEMENT APIS
+# ==========================================
 
-
-
-# --- Helper: Build the "Master Map" ---
-# fetching all zones/localities once is faster than querying for every row
-def get_master_mappings():
-    # 1. Map Zone -> KM
-    zone_map = {z['t3_billing_zone']: z['t3_billing_km'] for z in T3BillingKM.objects.values('t3_billing_zone', 't3_billing_km')}
-    
-    # 2. Map LocalityID -> {Name, Zone, KM}
-    loc_map = {}
-    localities = T3Locality.objects.values('id', 't3_locality', 't3_billing_zone')
-    
-    for l in localities:
-        z_name = l['t3_billing_zone']
-        km = zone_map.get(z_name, None) # Get KM from the zone map
-        loc_map[l['id']] = {
-            'name': l['t3_locality'],
-            'zone': z_name,
-            'km': km
-        }
-    return loc_map
-
-
-# --- Helper: Build the "Master Map" ---
-def get_master_mappings():
-    # 1. Map Zone -> KM
-    zone_map = {z['billing_zone']: z['billing_km'] for z in T3BillingKM.objects.values('billing_zone', 'billing_km')}
-    
-    # 2. Map LocalityName -> {Zone, KM}
-    loc_map = {}
-    try:
-        # Fetching from the Master Table
-        master_rows = T3LocalityMaster.objects.values('locality_name', 'billing_zone')
-        for l in master_rows:
-            name = l['locality_name']
-            z_name = l['billing_zone']
-            km = zone_map.get(z_name, None)
-            loc_map[name] = {'zone': z_name, 'km': km}
-    except Exception as e:
-        print(f"Warning: Could not fetch master mappings: {e}")
-        
-    return loc_map
-
-# --- Task 1: View All with Joins ---
+# --- API 1: Main Table View ---
 def locality_list_api(request):
+    try:
+        # 1. SMART LOAD: Locality -> Zone
+        # Matches "Mahipalpur" to "South" even if spaces/case differ
+        loc_to_zone = create_lookup_dict(
+            T3BillingZone.objects, 't3_locality', 't3_billing_zone'
+        )
+
+        # 2. SMART LOAD: Zone -> KM
+        # Matches "South" to "10" even if one says "South Zone"
+        zone_to_km = create_lookup_dict(
+            T3BillingKM.objects, 't3_billing_zone', 't3_billing_km'
+        )
+
+        # 3. Query Addresses
+        page_number = request.GET.get('page', 1)
+        search_query = request.GET.get('search', '').strip()
+
+        queryset = T3Locality.objects.values('id', 'address', 't3_locality').order_by('-id')
+
+        if search_query:
+            queryset = queryset.filter(
+                Q(address__icontains=search_query) | 
+                Q(t3_locality__icontains=search_query)
+            )
+
+        paginator = Paginator(queryset, 50)
+        page_obj = paginator.get_page(page_number)
+
+        results = []
+        for row in page_obj:
+            raw_loc_name = row.get('t3_locality') or ""
+            
+            # --- SMART LOOKUP ---
+            # 1. Normalize the locality name from the address
+            clean_loc = normalize(raw_loc_name)
+            
+            # 2. Find Zone (Look up using normalized key)
+            found_zone = loc_to_zone.get(clean_loc, "-")
+            
+            # 3. Find KM (Normalize the found zone first!)
+            # This ensures "South" finds "South Zone" in the KM table
+            clean_zone_key = normalize(found_zone)
+            found_km = zone_to_km.get(clean_zone_key, "-")
+
+            status = "Done" if (raw_loc_name and raw_loc_name.strip()) else "Pending"
+
+            results.append({
+                "id": row['id'],
+                "address": row['address'],
+                "locality": raw_loc_name,
+                "locality_id": raw_loc_name,
+                "billing_zone": found_zone,
+                "billing_km": found_km,
+                "status": status
+            })
+
+        global_pending = T3Locality.objects.filter(
+            Q(t3_locality__isnull=True) | Q(t3_locality='')
+        ).count()
+
+        return JsonResponse({
+            "results": results,
+            "global_pending": global_pending,
+            "pagination": {
+                "total_pages": paginator.num_pages,
+                "current_page": page_obj.number,
+                "total_records": paginator.count
+            }
+        })
+
+    except Exception as e:
+        print(f"🔥 LIST API ERROR: {str(e)}")
+        return JsonResponse({"results": [], "error": str(e)}, status=500)
+
+
+# --- API 2: Dropdown Data (Used for Preview) ---
+def dropdown_localities(request):
+    try:
+        # 1. SMART LOAD: Zone -> KM
+        zone_to_km = create_lookup_dict(
+            T3BillingKM.objects, 't3_billing_zone', 't3_billing_km'
+        )
+
+        # 2. Fetch all Zones
+        zone_list = list(T3BillingZone.objects.values('id', 't3_locality', 't3_billing_zone'))
+        
+        data = []
+        seen_names = set()
+
+        for item in zone_list:
+            raw_loc_name = item['t3_locality']
+            raw_zone_name = item['t3_billing_zone']
+            
+            if not raw_loc_name or raw_loc_name in seen_names:
+                continue
+            
+            seen_names.add(raw_loc_name)
+            
+            # 3. SMART LOOKUP for KM
+            # Normalize zone name to find match (e.g. "South" matches "South Zone")
+            clean_zone = normalize(raw_zone_name)
+            found_km = zone_to_km.get(clean_zone, "-")
+
+            data.append({
+                "id": raw_loc_name,             
+                "locality_name": raw_loc_name,
+                "billing_zone": raw_zone_name, # Send raw name for display
+                "billing_km": found_km
+            })
+
+        data.sort(key=lambda x: x['locality_name'])
+        return JsonResponse(data, safe=False)
+
+    except Exception as e:
+        print(f"🔥 DROPDOWN ERROR: {e}")
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+# --- API 3: Next Pending Address ---
+def next_pending(request):
+    try:
+        pending_item = T3Locality.objects.filter(
+            Q(t3_locality__isnull=True) | Q(t3_locality='')
+        ).first()
+
+        if pending_item:
+            return JsonResponse({
+                "found": True,
+                "data": {
+                    "id": pending_item.id,
+                    "address": pending_item.address,
+                    "locality": "" 
+                }
+            })
+        else:
+            return JsonResponse({"found": False})
+
+    except Exception as e:
+        print(f"🔥 NEXT-PENDING ERROR: {e}")
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+# --- API 4: Save Mapping (Single) ---
+@csrf_exempt
+def save_mapping(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'})
+    
+    try:
+        data = json.loads(request.body)
+        address_id = data.get('address_id')
+        new_locality_name = data.get('locality_id') 
+
+        if not address_id or not new_locality_name:
+            return JsonResponse({'success': False, 'error': 'Missing ID or Locality'})
+
+        obj = T3Locality.objects.get(id=address_id)
+        obj.t3_locality = new_locality_name 
+        obj.save()
+
+        return JsonResponse({'success': True})
+
+    except T3Locality.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Address not found'})
+    except Exception as e:
+        print(f"🔥 SAVE ERROR: {e}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+# --- API 5: Search Pending (Bulk Tab) ---
+def search_pending_addresses(request):
+    query = request.GET.get('q', '').strip()
     page_number = request.GET.get('page', 1)
-    search_query = request.GET.get('search', '').lower()
     
-    # 1. Get Address Data
-    queryset = T3AddressLocality.objects.all().order_by('id')
+    queryset = T3Locality.objects.filter(
+        Q(t3_locality__isnull=True) | Q(t3_locality='')
+    ).order_by('id')
     
-    if search_query:
-        queryset = queryset.filter(address__icontains=search_query)
+    if query:
+        queryset = queryset.filter(address__icontains=query)
 
     paginator = Paginator(queryset, 50)
     page_obj = paginator.get_page(page_number)
     
-    # 2. Manual Join
-    loc_map = get_master_mappings()
+    results = list(page_obj.object_list.values('id', 'address'))
     
-    final_results = []
-    
-    for row in page_obj:
-        # "row.locality_name" comes from the Address table column 't3_locality'
-        current_loc = row.locality_name 
-        details = loc_map.get(current_loc)
-        
-        status = "Completed"
-        if not current_loc or not details or details['km'] is None:
-            status = "Pending"
-            
-        final_results.append({
-            'id': row.id,
-            'address': row.address,
-            'locality': current_loc,
-            'billing_zone': details['zone'] if details else None,
-            'billing_km': details['km'] if details else None,
-            'status': status
-        })
-
-    # Global Pending Count (Approximation: Missing locality OR Missing mapping)
-    # Counting rows with empty locality column
-    global_pending = T3AddressLocality.objects.filter(locality_name__isnull=True).count()
-
     return JsonResponse({
-        'results': final_results,
-        'global_pending': global_pending,
+        'results': results,
         'pagination': {
-            'total_pages': paginator.num_pages,
             'current_page': page_obj.number,
+            'total_pages': paginator.num_pages,
             'total_records': paginator.count
         }
     })
 
-# --- Task 2: Dropdown Data ---
-# server/tracker/views.py
 
-def get_locality_dropdown(request):
-    try:
-        # 1. Fetch all Zone Rates (Zone -> KM)
-        # Result: {'East Delhi': 15.5, 'Paschim Vihar': 10.0, ...}
-        rates = list(T3BillingKM.objects.values('billing_zone', 'billing_km'))
-        rate_map = {r['billing_zone']: r['billing_km'] for r in rates}
-
-        # 2. Fetch all Localities
-        localities = list(T3LocalityMaster.objects.values('id', 'locality_name', 'billing_zone'))
-
-        # 3. Attach the KM to each Locality
-        for loc in localities:
-            zone_name = loc['billing_zone']
-            # Look up the KM in our map. Default to 'N/A' if not found.
-            loc['billing_km'] = rate_map.get(zone_name, 'N/A')
-
-        return JsonResponse(localities, safe=False)
-
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-# --- Task 3: Auto-Fetch Pending ---
-def get_next_pending(request):
-    # Find address where 't3_locality' column is NULL
-    item = T3AddressLocality.objects.filter(locality_name__isnull=True).first()
-    if item:
-        return JsonResponse({'found': True, 'data': {'id': item.id, 'address': item.address}})
-    return JsonResponse({'found': False})
-
-# --- Task 4: Save Mapping --
-# 
+# --- API 6: Bulk Save ---
 @csrf_exempt
-def save_mapping(request):
+def bulk_save_mapping(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
-            print(f"DEBUG: Received Data -> {data}")  # <--- PRINT 1
-
-            addr_id = data.get('address_id')
+            address_ids = data.get('address_ids', [])
             loc_id_from_dropdown = data.get('locality_id')
             
-            # 1. Fetch the Name
-            master_loc = T3LocalityMaster.objects.get(id=loc_id_from_dropdown)
-            real_locality_name = master_loc.locality_name
-            print(f"DEBUG: Found Locality Name -> {real_locality_name}") # <--- PRINT 2
+            T3Locality.objects.filter(id__in=address_ids).update(t3_locality=loc_id_from_dropdown)
             
-            # 2. Update the Address Row
-            row = T3AddressLocality.objects.get(id=addr_id)
-            row.locality_name = real_locality_name
-            row.save()
-            print(f"DEBUG: Saved Address ID {addr_id} successfully.") # <--- PRINT 3
-            
-            return JsonResponse({'success': True})
+            return JsonResponse({'success': True, 'count': len(address_ids)})
         except Exception as e:
-            print(f"DEBUG: ERROR -> {str(e)}") # <--- PRINT ERROR
             return JsonResponse({'success': False, 'error': str(e)})
             
+    return JsonResponse({'success': False, 'error': 'Invalid method'})
+
+# --- ADD THIS TO THE BOTTOM OF server/tracker/views.py ---
+
+# --- API 7: Add New Master Locality (Tab 3) ---
+@csrf_exempt
+def add_master_locality(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            new_locality = data.get('locality_name', '').strip()
+            existing_zone = data.get('zone_name', '').strip()
+
+            if not new_locality or not existing_zone:
+                return JsonResponse({'success': False, 'error': 'Missing Locality Name or Zone'})
+
+            # 1. Check if it already exists (Case-insensitive check)
+            if T3BillingZone.objects.filter(t3_locality__iexact=new_locality).exists():
+                return JsonResponse({'success': False, 'error': f"Locality '{new_locality}' already exists!"})
+
+            # 2. Get the next available ID manually (since DB auto-increment seems broken/missing)
+            # ... imports ...
+            from django.db.models import Max
+
+            # 2. Get the next available ID manually
+            max_id = T3BillingZone.objects.aggregate(Max('id'))['id__max']
+            next_id = (max_id or 0) + 1
+
+            # 3. Create the new Master Record with explicit ID
+            T3BillingZone.objects.create(
+                id=next_id,
+                t3_locality=new_locality,
+                t3_billing_zone=existing_zone
+            )
+            
+            return JsonResponse({'success': True, 'message': f"Successfully added '{new_locality}' to '{existing_zone}'"})
+
+        except Exception as e:
+            print(f"🔥 ADD MASTER ERROR: {e}")
+            return JsonResponse({'success': False, 'error': str(e)})
+
     return JsonResponse({'success': False, 'error': 'Invalid method'})

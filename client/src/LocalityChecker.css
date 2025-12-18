@@ -261,3 +261,27 @@
 .btn-icon-small:hover {
     color: var(--lm-primary);
 }
+
+/* Container for the pagination buttons */
+.pagination-controls {
+    display: flex;
+    /* This forces row layout */
+    flex-direction: row;
+    /* Ensures horizontal alignment */
+    align-items: center;
+    /* Centers items vertically */
+    justify-content: center;
+    /* Centers the group on the page */
+    gap: 15px;
+    /* Adds space between Prev, Text, and Next */
+    margin-top: 20px;
+    width: 100%;
+}
+
+/* Optional: Ensure the buttons don't stretch */
+.pagination-controls button {
+    width: auto;
+    /* Prevents buttons from being full width */
+    margin: 0;
+    /* Removes default margins */
+}

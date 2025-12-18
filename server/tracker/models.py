@@ -44,7 +44,6 @@ class MISReport(models.Model):
 
     # --- FINAL STAGE ---
     final_mis_status = models.BooleanField(default=False, verbose_name="Final MIS Status")
-    # NEW FIELD ADDED HERE
     bill_approval_status = models.BooleanField(default=False, verbose_name="Bill Approval Status")
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -57,31 +56,28 @@ class MISReport(models.Model):
         verbose_name_plural = "MIS Workflows"
 
 
-from django.db import models
-
 class T3BillingKM(models.Model):
     id = models.AutoField(primary_key=True)
-    billing_zone = models.CharField(max_length=255, unique=True, db_column='t3_billing_zone') 
-    billing_km = models.FloatField(db_column='t3_billing_km')
+    t3_billing_zone = models.CharField(max_length=255, unique=True, db_column='t3_billing_zone') 
+    t3_billing_km = models.FloatField(db_column='t3_billing_km')
 
     class Meta:
         db_table = 't3_billing_km'
         managed = False
 
-class T3LocalityMaster(models.Model):
+class T3BillingZone(models.Model):
     id = models.AutoField(primary_key=True)
-    # The 't3_billing_zone' table has columns: id, t3_locality, t3_billing_zone
-    locality_name = models.CharField(max_length=255, unique=True, db_column='t3_locality') 
-    billing_zone = models.CharField(max_length=255, db_column='t3_billing_zone') 
+    t3_locality = models.CharField(max_length=255, unique=True, db_column='t3_locality') 
+    t3_billing_zone = models.CharField(max_length=255, db_column='t3_billing_zone') 
 
     class Meta:
         db_table = 't3_billing_zone' 
         managed = False
 
-class T3AddressLocality(models.Model):
+class T3Locality(models.Model):
     id = models.AutoField(primary_key=True)
     address = models.TextField(db_column='address') 
-    locality_name = models.CharField(max_length=255, null=True, blank=True, db_column='t3_locality') 
+    t3_locality = models.CharField(max_length=255, null=True, blank=True, db_column='t3_locality') 
 
     class Meta:
         db_table = 't3_locality' 
