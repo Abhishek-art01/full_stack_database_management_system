@@ -1,0 +1,263 @@
+:root {
+    --lm-bg: #f8fafc;
+    --lm-card: #ffffff;
+    --lm-primary: #4f46e5;
+    --lm-text: #1e293b;
+    --lm-text-light: #64748b;
+    --lm-border: #e2e8f0;
+    --lm-danger: #ef4444;
+    --lm-success: #10b981;
+    --lm-warning: #f59e0b;
+}
+
+.lm-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: var(--lm-bg);
+    min-height: 100vh;
+}
+
+/* --- Header Section --- */
+.lm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+}
+
+.header-titles h1 {
+    font-size: 1.8rem;
+    margin: 0;
+    color: var(--lm-text);
+}
+
+.header-titles p {
+    color: var(--lm-text-light);
+    margin: 0.5rem 0 0;
+}
+
+/* Metric Card (Top Right) */
+.metric-card {
+    background: var(--lm-card);
+    border: 1px solid var(--lm-border);
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.metric-icon {
+    background: #fef2f2;
+    color: var(--lm-danger);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.metric-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--lm-text-light);
+    font-weight: 600;
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--lm-text);
+}
+
+.divider {
+    height: 1px;
+    background: var(--lm-border);
+    margin-bottom: 1.5rem;
+}
+
+/* --- Action Buttons (Horizontal) --- */
+.action-bar {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.btn-action {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    border: 1px solid var(--lm-border);
+    background: var(--lm-card);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--lm-text-light);
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.btn-action:hover {
+    border-color: var(--lm-primary);
+    color: var(--lm-primary);
+}
+
+.btn-action.active {
+    background: var(--lm-primary);
+    color: white;
+    border-color: var(--lm-primary);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+/* --- Content Areas --- */
+.view-form,
+.view-dashboard {
+    background: var(--lm-card);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--lm-border);
+}
+
+/* Form Styles */
+.card-form {
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-top: 1rem;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--lm-text);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--lm-border);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    outline: none;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: var(--lm-primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.btn-primary {
+    background: var(--lm-primary);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 1rem;
+    align-self: flex-start;
+}
+
+/* --- Table Styles --- */
+.table-controls {
+    margin-bottom: 1rem;
+    text-align: right;
+}
+
+.search-input {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--lm-border);
+    border-radius: 6px;
+    width: 250px;
+}
+
+.modern-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.modern-table th {
+    text-align: left;
+    padding: 1rem;
+    background: #f1f5f9;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--lm-text-light);
+    font-weight: 700;
+}
+
+.modern-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--lm-border);
+    color: var(--lm-text);
+    font-size: 0.95rem;
+}
+
+.modern-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.modern-table tbody tr:hover {
+    background: #fafafa;
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-pending {
+    background: #fff7ed;
+    color: var(--lm-warning);
+    border: 1px solid #ffedd5;
+}
+
+.status-approved {
+    background: #ecfdf5;
+    color: var(--lm-success);
+    border: 1px solid #d1fae5;
+}
+
+.status-rejected {
+    background: #fef2f2;
+    color: var(--lm-danger);
+    border: 1px solid #fee2e2;
+}
+
+/* Small Button for table row */
+.btn-icon-small {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--lm-text-light);
+    padding: 4px;
+}
+
+.btn-icon-small:hover {
+    color: var(--lm-primary);
+}
