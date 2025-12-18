@@ -1,258 +1,243 @@
 import { useState, useEffect } from 'react';
 import './LocalityChecker.css';
 
-// --- Simple Icons ---
-const IconAlert = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
-const IconEdit = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>;
-const IconRefresh = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>;
-const IconList = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>;
+// Icons (Same as before)
+const IconCheck = () => <span>✅</span>;
+const IconAlert = () => <span>⚠️</span>;
+const IconSearch = () => <span>🔍</span>;
 
 export default function LocalityManager() {
-    const [activeView, setActiveView] = useState('dashboard'); // 'dashboard', 'update', 'edit'
-    const [localities, setLocalities] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState({ pending: 0 });
+    const [activeTab, setActiveTab] = useState('view'); // 'view', 'set', 'edit'
 
-    // Inputs for forms
-    const [selectedLocalityId, setSelectedLocalityId] = useState('');
-    const [statusInput, setStatusInput] = useState('Pending');
-    const [editForm, setEditForm] = useState({ id: '', name: '', address: '' });
-    const [searchTerm, setSearchTerm] = useState('');
+    // Global Data
+    const [masterLocalities, setMasterLocalities] = useState([]); // Dropdown data
+    const [globalPending, setGlobalPending] = useState(0);
 
-    // --- Fetch Data ---
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            // REPLACE WITH YOUR ACTUAL DJANGO ENDPOINT
-            // const res = await fetch('http://127.0.0.1:8000/api/localities/'); 
-            // const data = await res.json();
+    // Tab 1: View All States
+    const [tableData, setTableData] = useState([]);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [viewSearch, setViewSearch] = useState('');
 
-            // Mock Data for demonstration
-            const mockData = [
-                { id: 1, locality_name: "Sector 45, Gurgaon", address: "Near Huda City", status: "Pending" },
-                { id: 2, locality_name: "Dwarka Sec 10", address: "Plot 4B", status: "Approved" },
-                { id: 3, locality_name: "Noida Sec 62", address: "IT Park", status: "Rejected" },
-            ];
+    // Tab 2: Set Locality States
+    const [pendingItem, setPendingItem] = useState(null);
+    const [selectedLocality, setSelectedLocality] = useState('');
+    const [previewData, setPreviewData] = useState({ zone: '', km: '' });
 
-            setTimeout(() => {
-                setLocalities(mockData);
-                const pendingCount = mockData.filter(i => i.status === 'Pending').length;
-                setStats({ pending: pendingCount });
-                setLoading(false);
-            }, 500);
-        } catch (error) {
-            console.error("Error fetching data:", error);
-            setLoading(false);
+    // Tab 3: Edit States
+    const [editSearch, setEditSearch] = useState('');
+    const [editItem, setEditItem] = useState(null);
+
+    // --- Initial Loads ---
+    useEffect(() => {
+        fetchMasterDropdown();
+        fetchTableData(1);
+    }, []);
+
+    const fetchMasterDropdown = async () => {
+        const res = await fetch('http://127.0.0.1:8000/api/dropdown-localities/'); // Create this URL
+        const data = await res.json();
+        setMasterLocalities(data);
+    };
+
+    const fetchTableData = async (pageNo = 1) => {
+        const res = await fetch(`http://127.0.0.1:8000/api/localities/?page=${pageNo}&search=${viewSearch}`);
+        const data = await res.json();
+        setTableData(data.results);
+        setTotalPages(data.pagination.total_pages);
+        setGlobalPending(data.global_pending);
+        setPage(pageNo);
+    };
+
+    const fetchNextPending = async () => {
+        const res = await fetch('http://127.0.0.1:8000/api/next-pending/'); // Create this URL
+        const data = await res.json();
+        if (data.found) {
+            setPendingItem(data.data);
+            setSelectedLocality('');
+            setPreviewData({ zone: '', km: '' });
+        } else {
+            setPendingItem(null);
         }
     };
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    // --- Logic Handlers ---
 
-    // --- Handlers ---
-    const handleUpdateStatus = (e) => {
-        e.preventDefault();
-        alert(`Updating ID ${selectedLocalityId} to ${statusInput}`);
-        // Add API call here: POST /api/update-status/
-        setActiveView('dashboard');
-        fetchData(); // Refresh list
+    // When dropdown changes in Tab 2 or Tab 3
+    const handleLocalitySelect = (locId) => {
+        setSelectedLocality(locId);
+
+        // Find the full details of the selected locality from our master list
+        const loc = masterLocalities.find(l => l.id == locId);
+
+        if (loc) {
+            setPreviewData({
+                zone: loc.billing_zone,
+                // Now we simply read the value we got from the backend!
+                km: loc.billing_km
+            });
+        } else {
+            setPreviewData({ zone: '', km: '' });
+        }
     };
 
-    const handleEditSave = (e) => {
-        e.preventDefault();
-        alert(`Saving: ${editForm.name} - ${editForm.address}`);
-        // Add API call here: POST /api/edit-locality/
-        setActiveView('dashboard');
-        fetchData();
-    };
+    const handleSavePending = async () => {
+        if (!pendingItem || !selectedLocality) {
+            alert("Please select a locality first!");
+            return;
+        }
 
-    const startEdit = (loc) => {
-        setEditForm({ id: loc.id, name: loc.locality_name, address: loc.address });
-        setActiveView('edit');
-    };
+        try {
+            console.log("Saving...", { address_id: pendingItem.id, locality_id: selectedLocality });
 
-    // --- Filtered List for Dashboard ---
-    const filteredList = localities.filter(l =>
-        l.locality_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+            const res = await fetch('http://127.0.0.1:8000/api/save-mapping/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    address_id: pendingItem.id,
+                    locality_id: selectedLocality
+                })
+            });
+
+            const data = await res.json();
+
+            // CHECK IF SAVE WORKED
+            if (data.success) {
+                console.log("Save Success!");
+                // Only move to next if save was successful
+                fetchNextPending();
+                fetchTableData(page);
+            } else {
+                console.error("Save Failed:", data.error);
+                alert("Error saving: " + data.error);
+            }
+        } catch (err) {
+            console.error("Network Error:", err);
+            alert("Network Error: " + err.message);
+        }
+    };
 
     return (
         <div className="lm-container">
-            {/* 1. Header & Metric Corner */}
+            {/* Header & Pending Counter */}
             <header className="lm-header">
-                <div className="header-titles">
-                    <h1>🏙️ Locality Manager</h1>
-                    <p>Overview of system localities and status</p>
-                </div>
-
+                <h1>🏙️ Locality Manager</h1>
                 <div className="metric-card">
-                    <div className="metric-icon">
-                        <IconAlert />
-                    </div>
-                    <div className="metric-info">
-                        <span className="metric-label">Pending Localities</span>
-                        <span className="metric-value">{stats.pending}</span>
+                    <IconAlert />
+                    <div>
+                        <span className="metric-label">Pending Addresses</span>
+                        <div className="metric-value">{globalPending}</div>
                     </div>
                 </div>
             </header>
 
-            <div className="divider"></div>
-
-            {/* 2. Horizontal Action Buttons */}
+            {/* Navigation Tabs */}
             <div className="action-bar">
-                <button
-                    className={`btn-action ${activeView === 'dashboard' ? 'active' : ''}`}
-                    onClick={() => setActiveView('dashboard')}
-                >
-                    <IconList /> View All
+                <button className={`btn-action ${activeTab === 'view' ? 'active' : ''}`} onClick={() => setActiveTab('view')}>
+                    View All
                 </button>
-                <button
-                    className={`btn-action ${activeView === 'update' ? 'active' : ''}`}
-                    onClick={() => setActiveView('update')}
-                >
-                    <IconRefresh /> Update Status
+                <button className={`btn-action ${activeTab === 'set' ? 'active' : ''}`} onClick={() => { setActiveTab('set'); fetchNextPending(); }}>
+                    Set Locality (Auto)
                 </button>
-                <button
-                    className={`btn-action ${activeView === 'edit' ? 'active' : ''}`}
-                    onClick={() => setActiveView('edit')}
-                >
-                    <IconEdit /> Edit Locality
+                <button className={`btn-action ${activeTab === 'edit' ? 'active' : ''}`} onClick={() => setActiveTab('edit')}>
+                    Edit Existing
                 </button>
             </div>
 
-            {/* 3. Dynamic Content Area */}
-            <div className="lm-content">
-
-                {/* VIEW: DASHBOARD TABLE */}
-                {activeView === 'dashboard' && (
-                    <div className="view-dashboard">
-                        <div className="table-controls">
-                            <input
-                                type="text"
-                                placeholder="Search localities..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="search-input"
-                            />
-                        </div>
-                        <div className="table-wrapper">
-                            <table className="modern-table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Locality Name</th>
-                                        <th>Address</th>
-                                        <th>Status</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {loading ? (
-                                        <tr><td colSpan="5" className="text-center">Loading...</td></tr>
-                                    ) : filteredList.map((loc) => (
-                                        <tr key={loc.id}>
-                                            <td>#{loc.id}</td>
-                                            <td>{loc.locality_name}</td>
-                                            <td>{loc.address}</td>
-                                            <td>
-                                                <span className={`status-badge status-${loc.status.toLowerCase()}`}>
-                                                    {loc.status}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <button className="btn-icon-small" onClick={() => startEdit(loc)}>
-                                                    <IconEdit />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+            {/* --- TAB 1: VIEW ALL --- */}
+            {activeTab === 'view' && (
+                <div className="view-dashboard">
+                    <div className="table-controls">
+                        <input
+                            placeholder="Filter Address..."
+                            value={viewSearch}
+                            onChange={(e) => setViewSearch(e.target.value)}
+                        />
+                        <button onClick={() => fetchTableData(1)}><IconSearch /></button>
                     </div>
-                )}
+                    <table className="modern-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Address</th>
+                                <th>Locality</th>
+                                <th>Zone</th>
+                                <th>KM</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {tableData.map(row => (
+                                <tr key={row.id}>
+                                    <td>{row.id}</td>
+                                    <td>{row.address}</td>
+                                    <td>{row.locality || '-'}</td>
+                                    <td>{row.billing_zone || '-'}</td>
+                                    <td>{row.billing_km || '-'}</td>
+                                    <td>
+                                        <span className={`status-badge status-${row.status.toLowerCase()}`}>
+                                            {row.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {/* Add Pagination Buttons Here */}
+                </div>
+            )}
 
-                {/* VIEW: UPDATE FORM */}
-                {activeView === 'update' && (
-                    <div className="view-form">
-                        <h2>📝 Update Status</h2>
-                        <form onSubmit={handleUpdateStatus} className="card-form">
-                            <div className="form-group">
-                                <label>Select Locality</label>
-                                <select
-                                    value={selectedLocalityId}
-                                    onChange={e => setSelectedLocalityId(e.target.value)}
-                                    required
-                                >
-                                    <option value="">-- Choose Locality --</option>
-                                    {localities.map(loc => (
-                                        <option key={loc.id} value={loc.id}>
-                                            {loc.locality_name} (Current: {loc.status})
-                                        </option>
-                                    ))}
-                                </select>
+            {/* --- TAB 2: SET LOCALITY (AUTO) --- */}
+            {activeTab === 'set' && (
+                <div className="view-form">
+                    {pendingItem ? (
+                        <>
+                            <h2>⚡ Rapid Fire Assignment</h2>
+                            <div className="pending-card">
+                                <label>Address To Assign:</label>
+                                <div className="highlight-box">{pendingItem.address}</div>
                             </div>
-                            <div className="form-group">
-                                <label>New Status</label>
-                                <select
-                                    value={statusInput}
-                                    onChange={e => setStatusInput(e.target.value)}
-                                >
-                                    <option value="Pending">Pending</option>
-                                    <option value="Approved">Approved</option>
-                                    <option value="Rejected">Rejected</option>
-                                </select>
-                            </div>
-                            <button type="submit" className="btn-primary">Update Status</button>
-                        </form>
-                    </div>
-                )}
 
-                {/* VIEW: EDIT FORM */}
-                {activeView === 'edit' && (
-                    <div className="view-form">
-                        <h2>✏️ Edit Details</h2>
-                        <p className="hint">Select a locality from the Dashboard to populate this form, or select below.</p>
-
-                        <form onSubmit={handleEditSave} className="card-form">
                             <div className="form-group">
-                                <label>Select Record to Edit</label>
+                                <label>Search & Select Locality</label>
                                 <select
-                                    value={editForm.id}
-                                    onChange={(e) => {
-                                        const loc = localities.find(l => l.id.toString() === e.target.value);
-                                        if (loc) startEdit(loc);
-                                    }}
+                                    value={selectedLocality}
+                                    onChange={(e) => handleLocalitySelect(e.target.value)}
                                 >
-                                    <option value="">-- Select Locality --</option>
-                                    {localities.map(loc => (
+                                    <option value="">-- Select --</option>
+                                    {masterLocalities.map(loc => (
                                         <option key={loc.id} value={loc.id}>{loc.locality_name}</option>
                                     ))}
                                 </select>
                             </div>
 
-                            <div className="form-group">
-                                <label>Locality Name</label>
-                                <input
-                                    type="text"
-                                    value={editForm.name}
-                                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                                />
+                            <div className="info-row">
+                                <div>Zone: <strong>{previewData.zone || 'N/A'}</strong></div>
+                                <div>KM: <strong>{previewData.km || 'N/A'}</strong></div>
                             </div>
-                            <div className="form-group">
-                                <label>Address</label>
-                                <textarea
-                                    rows="3"
-                                    value={editForm.address}
-                                    onChange={e => setEditForm({ ...editForm, address: e.target.value })}
-                                />
-                            </div>
-                            <button type="submit" className="btn-primary">Save Changes</button>
-                        </form>
-                    </div>
-                )}
-            </div>
+
+                            <button className="btn-primary" onClick={handleSavePending}>
+                                Save & Fetch Next ➡
+                            </button>
+                        </>
+                    ) : (
+                        <div className="success-state">
+                            <IconCheck />
+                            <h3>All Caught Up!</h3>
+                            <p>No pending addresses found.</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* --- TAB 3: EDIT EXISTING --- */}
+            {activeTab === 'edit' && (
+                <div className="view-form">
+                    <h2>✏️ Search & Edit</h2>
+                    {/* Add Search Bar logic similar to Tab 1 but allowing editing of the dropdown */}
+                    <p>Search for an address to unlock editing mode...</p>
+                </div>
+            )}
         </div>
     );
 }

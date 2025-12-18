@@ -57,31 +57,32 @@ class MISReport(models.Model):
         verbose_name_plural = "MIS Workflows"
 
 
-# ... existing imports and MISReport model ...
-
-class T3Locality(models.Model):
-    locality_name = models.CharField(max_length=255)
-    billing_zone = models.CharField(max_length=100) # e.g., "South Delhi", "Zone A"
-
-    def __str__(self):
-        return self.locality_name
+from django.db import models
 
 class T3BillingKM(models.Model):
-    billing_zone = models.CharField(max_length=100)
-    billing_km = models.FloatField()
+    id = models.AutoField(primary_key=True)
+    billing_zone = models.CharField(max_length=255, unique=True, db_column='t3_billing_zone') 
+    billing_km = models.FloatField(db_column='t3_billing_km')
 
-    def __str__(self):
-        return f"{self.billing_zone} - {self.billing_km}km"
+    class Meta:
+        db_table = 't3_billing_km'
+        managed = False
+
+class T3LocalityMaster(models.Model):
+    id = models.AutoField(primary_key=True)
+    # The 't3_billing_zone' table has columns: id, t3_locality, t3_billing_zone
+    locality_name = models.CharField(max_length=255, unique=True, db_column='t3_locality') 
+    billing_zone = models.CharField(max_length=255, db_column='t3_billing_zone') 
+
+    class Meta:
+        db_table = 't3_billing_zone' 
+        managed = False
 
 class T3AddressLocality(models.Model):
-    # The raw address data
-    pickup_address = models.TextField()
-    
-    # The field we need to update (nullable initially)
-    assigned_locality = models.ForeignKey(T3Locality, on_delete=models.SET_NULL, null=True, blank=True)
-    
-    # Metadata
-    status = models.CharField(max_length=20, default="Pending") # Pending, Completed
-    
-    def __str__(self):
-        return self.pickup_address[:50]
+    id = models.AutoField(primary_key=True)
+    address = models.TextField(db_column='address') 
+    locality_name = models.CharField(max_length=255, null=True, blank=True, db_column='t3_locality') 
+
+    class Meta:
+        db_table = 't3_locality' 
+        managed = False

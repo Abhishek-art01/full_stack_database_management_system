@@ -3,8 +3,11 @@ from datetime import datetime, timedelta
 import calendar
 from .models import MISReport # Import your model
 from django.db.models import Count
-from .models import T3AddressLocality, T3Locality, T3BillingKM
+from django.core.paginator import Paginator
+from django.db.models import Q
+from .models import T3AddressLocality, T3LocalityMaster, T3BillingKM
 import json
+from django.views.decorators.csrf import csrf_exempt  
 
 def get_report_for_month(year, month_name):
     """
@@ -89,55 +92,158 @@ def dashboard_data(request):
 
 
 
-def locality_master_data(request):
-    """Returns all valid localities and their zones for the dropdown"""
-    # We send the zone along with the name so frontend can auto-fill immediately
-    data = list(T3Locality.objects.values('id', 'locality_name', 'billing_zone'))
-    return JsonResponse({'localities': data})
 
-def get_pending_address(request):
-    """Fetches the next address that needs a locality"""
-    # 1. Get Count
-    pending_count = T3AddressLocality.objects.filter(assigned_locality__isnull=True).count()
-    
-    # 2. Get One Record
-    next_item = T3AddressLocality.objects.filter(assigned_locality__isnull=True).first()
-    
-    if next_item:
-        return JsonResponse({
-            'found': True,
-            'pending_count': pending_count,
-            'data': {
-                'id': next_item.id,
-                'address': next_item.pickup_address
-            }
-        })
-    else:
-        return JsonResponse({'found': False, 'pending_count': 0})
 
-def get_billing_km(request):
-    """Finds KM based on Zone"""
-    zone = request.GET.get('zone')
+# --- Helper: Build the "Master Map" ---
+# fetching all zones/localities once is faster than querying for every row
+def get_master_mappings():
+    # 1. Map Zone -> KM
+    zone_map = {z['t3_billing_zone']: z['t3_billing_km'] for z in T3BillingKM.objects.values('t3_billing_zone', 't3_billing_km')}
+    
+    # 2. Map LocalityID -> {Name, Zone, KM}
+    loc_map = {}
+    localities = T3Locality.objects.values('id', 't3_locality', 't3_billing_zone')
+    
+    for l in localities:
+        z_name = l['t3_billing_zone']
+        km = zone_map.get(z_name, None) # Get KM from the zone map
+        loc_map[l['id']] = {
+            'name': l['t3_locality'],
+            'zone': z_name,
+            'km': km
+        }
+    return loc_map
+
+
+# --- Helper: Build the "Master Map" ---
+def get_master_mappings():
+    # 1. Map Zone -> KM
+    zone_map = {z['billing_zone']: z['billing_km'] for z in T3BillingKM.objects.values('billing_zone', 'billing_km')}
+    
+    # 2. Map LocalityName -> {Zone, KM}
+    loc_map = {}
     try:
-        record = T3BillingKM.objects.get(billing_zone=zone)
-        return JsonResponse({'km': record.billing_km})
-    except T3BillingKM.DoesNotExist:
-        return JsonResponse({'km': 0}) # Or handle error
-
-def save_address_mapping(request):
-    """Saves the selected locality to the address"""
-    if request.method == "POST":
-        data = json.loads(request.body)
-        address_id = data.get('address_id')
-        locality_id = data.get('locality_id')
+        # Fetching from the Master Table
+        master_rows = T3LocalityMaster.objects.values('locality_name', 'billing_zone')
+        for l in master_rows:
+            name = l['locality_name']
+            z_name = l['billing_zone']
+            km = zone_map.get(z_name, None)
+            loc_map[name] = {'zone': z_name, 'km': km}
+    except Exception as e:
+        print(f"Warning: Could not fetch master mappings: {e}")
         
+    return loc_map
+
+# --- Task 1: View All with Joins ---
+def locality_list_api(request):
+    page_number = request.GET.get('page', 1)
+    search_query = request.GET.get('search', '').lower()
+    
+    # 1. Get Address Data
+    queryset = T3AddressLocality.objects.all().order_by('id')
+    
+    if search_query:
+        queryset = queryset.filter(address__icontains=search_query)
+
+    paginator = Paginator(queryset, 50)
+    page_obj = paginator.get_page(page_number)
+    
+    # 2. Manual Join
+    loc_map = get_master_mappings()
+    
+    final_results = []
+    
+    for row in page_obj:
+        # "row.locality_name" comes from the Address table column 't3_locality'
+        current_loc = row.locality_name 
+        details = loc_map.get(current_loc)
+        
+        status = "Completed"
+        if not current_loc or not details or details['km'] is None:
+            status = "Pending"
+            
+        final_results.append({
+            'id': row.id,
+            'address': row.address,
+            'locality': current_loc,
+            'billing_zone': details['zone'] if details else None,
+            'billing_km': details['km'] if details else None,
+            'status': status
+        })
+
+    # Global Pending Count (Approximation: Missing locality OR Missing mapping)
+    # Counting rows with empty locality column
+    global_pending = T3AddressLocality.objects.filter(locality_name__isnull=True).count()
+
+    return JsonResponse({
+        'results': final_results,
+        'global_pending': global_pending,
+        'pagination': {
+            'total_pages': paginator.num_pages,
+            'current_page': page_obj.number,
+            'total_records': paginator.count
+        }
+    })
+
+# --- Task 2: Dropdown Data ---
+# server/tracker/views.py
+
+def get_locality_dropdown(request):
+    try:
+        # 1. Fetch all Zone Rates (Zone -> KM)
+        # Result: {'East Delhi': 15.5, 'Paschim Vihar': 10.0, ...}
+        rates = list(T3BillingKM.objects.values('billing_zone', 'billing_km'))
+        rate_map = {r['billing_zone']: r['billing_km'] for r in rates}
+
+        # 2. Fetch all Localities
+        localities = list(T3LocalityMaster.objects.values('id', 'locality_name', 'billing_zone'))
+
+        # 3. Attach the KM to each Locality
+        for loc in localities:
+            zone_name = loc['billing_zone']
+            # Look up the KM in our map. Default to 'N/A' if not found.
+            loc['billing_km'] = rate_map.get(zone_name, 'N/A')
+
+        return JsonResponse(localities, safe=False)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+# --- Task 3: Auto-Fetch Pending ---
+def get_next_pending(request):
+    # Find address where 't3_locality' column is NULL
+    item = T3AddressLocality.objects.filter(locality_name__isnull=True).first()
+    if item:
+        return JsonResponse({'found': True, 'data': {'id': item.id, 'address': item.address}})
+    return JsonResponse({'found': False})
+
+# --- Task 4: Save Mapping --
+# 
+@csrf_exempt
+def save_mapping(request):
+    if request.method == "POST":
         try:
-            address_row = T3AddressLocality.objects.get(id=address_id)
-            address_row.assigned_locality_id = locality_id
-            address_row.status = "Completed"
-            address_row.save()
+            data = json.loads(request.body)
+            print(f"DEBUG: Received Data -> {data}")  # <--- PRINT 1
+
+            addr_id = data.get('address_id')
+            loc_id_from_dropdown = data.get('locality_id')
+            
+            # 1. Fetch the Name
+            master_loc = T3LocalityMaster.objects.get(id=loc_id_from_dropdown)
+            real_locality_name = master_loc.locality_name
+            print(f"DEBUG: Found Locality Name -> {real_locality_name}") # <--- PRINT 2
+            
+            # 2. Update the Address Row
+            row = T3AddressLocality.objects.get(id=addr_id)
+            row.locality_name = real_locality_name
+            row.save()
+            print(f"DEBUG: Saved Address ID {addr_id} successfully.") # <--- PRINT 3
+            
             return JsonResponse({'success': True})
         except Exception as e:
+            print(f"DEBUG: ERROR -> {str(e)}") # <--- PRINT ERROR
             return JsonResponse({'success': False, 'error': str(e)})
             
-    return JsonResponse({'success': False, 'error': "Invalid Method"})
+    return JsonResponse({'success': False, 'error': 'Invalid method'})
