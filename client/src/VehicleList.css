@@ -1,0 +1,210 @@
+/* Container Layout */
+.vl-container {
+    padding: 20px 40px;
+    background-color: #f8fafc;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Header Section */
+.vl-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.vl-header h1 {
+    font-size: 1.5rem;
+    color: #1e293b;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.badge-count {
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 0.85rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.title-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.btn-add {
+    background-color: #4f46e5;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-add:hover {
+    background-color: #4338ca;
+}
+
+/* Controls (Search & Filter) */
+.vl-controls {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.search-wrapper {
+    flex: 1;
+    position: relative;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+}
+
+.search-icon {
+    margin-right: 10px;
+    opacity: 0.5;
+}
+
+.search-wrapper input {
+    width: 100%;
+    border: none;
+    padding: 12px 0;
+    outline: none;
+    font-size: 0.95rem;
+    color: #334155;
+}
+
+.filter-select {
+    padding: 0 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+    color: #475569;
+    outline: none;
+    cursor: pointer;
+}
+
+/* Table Styles */
+.table-wrapper {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.vl-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.vl-table thead {
+    background-color: #f1f5f9;
+}
+
+.vl-table th {
+    padding: 15px 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #64748b;
+    letter-spacing: 0.05em;
+}
+
+.vl-table td {
+    padding: 16px 20px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    font-size: 0.95rem;
+}
+
+.vl-table tr:hover {
+    background-color: #f8fafc;
+}
+
+/* Specific Columns */
+.vehicle-no {
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Status Badges */
+.status-pill {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: capitalize;
+}
+
+.status-pill.active {
+    background-color: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.status-pill.inactive {
+    background-color: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.status-pill.maintenance {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.status-pill.trip {
+    background-color: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+/* Action Buttons */
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 5px;
+    border-radius: 4px;
+    transition: background 0.2s;
+    margin: 0 2px;
+}
+
+.btn-icon:hover {
+    background-color: #e2e8f0;
+}
+
+.btn-icon.delete:hover {
+    background-color: #fee2e2;
+}
+
+/* Empty State */
+.empty-row {
+    text-align: center;
+    padding: 40px;
+    color: #94a3b8;
+    font-style: italic;
+}

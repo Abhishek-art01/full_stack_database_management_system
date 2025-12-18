@@ -82,3 +82,25 @@ class T3Locality(models.Model):
     class Meta:
         db_table = 't3_locality' 
         managed = False
+
+
+from django.db import models
+
+class VehicleList(models.Model):
+    # Standard Fields
+    last_digit = models.CharField(max_length=10, null=True, blank=True)
+    vehicle_no = models.CharField(max_length=15, unique=True) 
+    cab_type = models.CharField(max_length=10, null=True, blank=True)
+    vehicle_ownership = models.CharField(max_length=20, null=True, blank=True)
+    contact_no = models.CharField(max_length=10, null=True, blank=True)
+    
+    # --- UPDATED FOR PDF STORAGE ---
+    # changed from ImageField to FileField to accept PDFs
+    rc_document = models.FileField(upload_to='vehicle_rc/', null=True, blank=True)
+
+    def __str__(self):
+        return self.vehicle_no
+
+    class Meta:
+        verbose_name = "Vehicle List"
+        verbose_name_plural = "Vehicle List"

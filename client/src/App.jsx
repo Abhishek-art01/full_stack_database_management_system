@@ -1,33 +1,60 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+
+// --- Page Imports ---
+// Assuming these are in your src/ folder based on your file tree
 import Login from './Login';
 import Dashboard from './Dashboard';
-import LocalityChecker from './LocalityChecker';
+import LocalityChecker from './LocalityChecker'; // This is your Locality Manager
+import VehicleList from './VehicleList';         // The new file
 import GPSChecker from './GPSChecker';
 import Downloads from './Downloads';
-import Header from './Header';
-import Footer from './Footer';
-import './Layout.css'; // Import the CSS
+
+// --- Component Imports ---
+// Assuming Sidebar was moved to components folder as discussed
+import Sidebar from './components/Sidebar';
+
+import './Layout.css';
+
+// We create a helper component so we can use the 'useLocation' hook
+// to hide the Sidebar on the Login page.
+function AppContent() {
+  const location = useLocation();
+  const isLoginPage = location.pathname === '/';
+
+  return (
+    <div className="app-wrapper">
+      {/* Only show Sidebar if we are NOT on the login page */}
+      {!isLoginPage && <Sidebar />}
+
+      <main className="main-content">
+        <Routes>
+          {/* Login */}
+          <Route path="/" element={<Login />} />
+
+          {/* Dashboard */}
+          <Route path="/dashboard" element={<Dashboard />} />
+
+          {/* Locality Manager (Updated path to match Sidebar) */}
+          <Route path="/locality-manager" element={<LocalityChecker />} />
+
+          {/* NEW: Vehicle List */}
+          <Route path="/vehicle-list" element={<VehicleList />} />
+
+          {/* Other Tools */}
+          <Route path="/gps-checker" element={<GPSChecker />} />
+          <Route path="/downloads" element={<Downloads />} />
+        </Routes>
+      </main>
+    </div>
+  );
+}
 
 function App() {
   return (
     <BrowserRouter>
-      <div className="app-wrapper">
-        {/* Header appears on every page */}
-        <Header />
-
-        {/* Main content area changes based on route */}
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/locality-checker" element={<LocalityChecker />} />
-            <Route path="/gps-checker" element={<GPSChecker />} />
-            <Route path="/downloads" element={<Downloads />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
-    </BrowserRouter >
+      <AppContent />
+    </BrowserRouter>
   );
 }
 

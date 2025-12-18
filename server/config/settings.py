@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import json
 from pathlib import Path
+import os
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  
@@ -122,6 +124,60 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+# ==========================================
+# SECRET CONFIGURATION
+# ==========================================
+
+# 1. robustly find the 'server' folder
+# settings.py is in: server/config/settings.py
+# .parent       -> server/config
+# .parent.parent-> server
+SERVER_DIR = Path(__file__).resolve().parent.parent
+
+# 2. Point to the secrets file inside 'server/credintial'
+# Note: Using your folder name 'credintial' (spelling matches your file tree)
+SECRETS_FILE = SERVER_DIR / 'credintial' / 'secrets.json'
+
+# 3. Read the JSON file
+try:
+    with open(SECRETS_FILE) as f:
+        secrets = json.loads(f.read())
+except FileNotFoundError:
+    raise ImproperlyConfigured(f"Secrets file not found at: {SECRETS_FILE}")
+except json.JSONDecodeError:
+    raise ImproperlyConfigured(f"Error decoding JSON in: {SECRETS_FILE}")
+
+# 4. Helper function to get variables safely
+def get_secret(setting, secrets=secrets):
+    try:
+        return secrets[setting]
+    except KeyError:
+        raise ImproperlyConfigured(f"Set the {setting} variable in secrets.json")
+
+# ==========================================
+# SUPABASE STORAGE CONFIGURATION
+# ==========================================
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "access_key": get_secret("SUPABASE_ACCESS_KEY_ID"),
+            "secret_key": get_secret("SUPABASE_SECRET_ACCESS_KEY"),
+            "bucket_name": get_secret("SUPABASE_BUCKET_NAME"),
+            "endpoint_url": get_secret("SUPABASE_ENDPOINT_URL"),
+            "region_name": "us-east-1",
+            "default_acl": "public-read",
+            "querystring_auth": False,
+            "object_parameters": {
+                "CacheControl": "max-age=86400",
+            },
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
@@ -148,3 +204,4 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
 ]
+
