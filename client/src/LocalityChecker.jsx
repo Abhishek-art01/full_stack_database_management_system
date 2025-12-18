@@ -69,7 +69,6 @@ export default function LocalityManager() {
 
         // Find the full details of the selected locality from our master list
         const loc = masterLocalities.find(l => l.id == locId);
-
         if (loc) {
             setPreviewData({
                 zone: loc.billing_zone,
@@ -183,7 +182,6 @@ export default function LocalityManager() {
                             ))}
                         </tbody>
                     </table>
-                    {/* Add Pagination Buttons Here */}
                 </div>
             )}
 
