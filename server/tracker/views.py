@@ -8,7 +8,7 @@ from django.db.models import Count, Q, Max
 from django.views.decorators.csrf import csrf_exempt
 
 # IMPORT YOUR MODELS
-from .models import MISReport, T3Locality, T3BillingZone, T3BillingKM
+from .models import MISReport, T3Locality, T3BillingZone, T3BillingKM, VehicleList
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +20,6 @@ def normalize(text):
     if not text: return ""
     # 1. Basic cleanup
     text = str(text).strip().lower()
-    # 2. Remove common suffixes to help matching
-    text = text.replace(" zone", "").replace(" billing", "").strip()
     return text
 
 def create_lookup_dict(queryset, key_field, val_field):
@@ -378,3 +376,74 @@ def add_master_locality(request):
             return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': 'Invalid method'})
+
+
+# ==========================================
+# 4. VEHICLE MANAGEMENT APIS
+# ==========================================
+
+# --- API 8: Get All Vehicles ---
+def get_vehicle_list(request):
+    """
+    Fetches all vehicles to display in the VehicleList.jsx table.
+    """
+    try:
+        # Get all vehicles, newest first
+        vehicles = VehicleList.objects.all().order_by('-id')
+        
+        data = []
+        for v in vehicles:
+            data.append({
+                "id": v.id,
+                "vehicle_no": v.vehicle_no,
+                "contact_no": v.contact_no,
+                "ownership": v.vehicle_ownership,
+                "cab_type": v.cab_type,
+                # .url gives the public link to the file on Supabase
+                "rc_document": v.rc_document.url if v.rc_document else None
+            })
+            
+        return JsonResponse({"results": data})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+# --- API 9: Add New Vehicle (With File Upload) ---
+@csrf_exempt
+def add_vehicle(request):
+    """
+    Handles the form submission from React to add a new car.
+    Supports PDF/Image uploads for RC.
+    """
+    if request.method == "POST":
+        try:
+            # 1. Extract Text Data
+            vehicle_no = request.POST.get('vehicle_no')
+            contact_no = request.POST.get('contact_no')
+            cab_type = request.POST.get('cab_type')
+            ownership = request.POST.get('vehicle_ownership')
+            
+            # 2. Extract the File (PDF/Image)
+            # request.FILES holds the uploaded file object
+            rc_file = request.FILES.get('rc_document') 
+
+            if not vehicle_no:
+                return JsonResponse({"success": False, "error": "Vehicle Number is required"})
+
+            # 3. Create Record in Database
+            # Django + boto3 will automatically stream the file to Supabase here
+            VehicleList.objects.create(
+                vehicle_no=vehicle_no,
+                contact_no=contact_no,
+                cab_type=cab_type,
+                vehicle_ownership=ownership,
+                rc_document=rc_file 
+            )
+
+            return JsonResponse({"success": True, "message": "Vehicle Added Successfully!"})
+
+        except Exception as e:
+            print(f"🔥 ADD VEHICLE ERROR: {e}")
+            return JsonResponse({"success": False, "error": str(e)})
+
+    return JsonResponse({"success": False, "error": "Invalid method"})

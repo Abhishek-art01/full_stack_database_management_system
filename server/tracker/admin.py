@@ -1,6 +1,7 @@
 from django.contrib import admin
 from rangefilter.filters import DateRangeFilterBuilder
-from .models import MISReport, T3Locality, T3BillingZone, T3BillingKM
+from django.utils.html import format_html
+from .models import MISReport, T3Locality, T3BillingZone, T3BillingKM, VehicleList
 
 # --- 1. MIS REPORT ADMIN (Your existing code) ---
 @admin.register(MISReport)
@@ -60,3 +61,24 @@ class T3LocalityAdmin(admin.ModelAdmin):
     list_display = ('id', 'address', 't3_locality')
     search_fields = ('address', 't3_locality')
     list_filter = ('t3_locality',)
+
+# Don't forget to add VehicleList to your import at the top!
+# from .models import MISReport, T3Locality, T3BillingZone, T3BillingKM, VehicleList
+
+@admin.register(VehicleList)
+class VehicleListAdmin(admin.ModelAdmin):
+    # 1. Columns to show in the list
+    list_display = ('id', 'vehicle_no', 'contact_no', 'cab_type', 'vehicle_ownership', 'rc_document_link')
+    
+    # 2. Search bar configuration
+    search_fields = ('vehicle_no', 'contact_no')
+    
+    # 3. Filters on the right sidebar
+    list_filter = ('cab_type', 'vehicle_ownership')
+
+    # 4. Custom function to make the RC link clickable
+    def rc_document_link(self, obj):
+        if obj.rc_document:
+            return format_html('<a href="{}" target="_blank">📄 View RC</a>', obj.rc_document.url)
+        return "-"
+    rc_document_link.short_description = "RC Document"

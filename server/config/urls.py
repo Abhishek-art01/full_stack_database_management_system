@@ -1,8 +1,4 @@
 """
-URL configuration for config project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
 Examples:
 Function views
     1. Add an import:  from my_app import views
@@ -18,11 +14,14 @@ from django.contrib import admin
 from django.urls import path, include
 from . import views
 from django.views.generic import RedirectView
-
+from django.conf import settings
+from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/login/', views.login_api),
     path('api/', include('tracker.urls')), 
-    path('', include('tracker.urls')),
     path('', RedirectView.as_view(url='/admin/')),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -4,7 +4,7 @@ from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 
 # ==========================================
-# 1. ROBUST SECRET LOADING (MOVED TO TOP)
+# 1.SECRET LOADING
 # ==========================================
 
 # Calculate the path to the 'server' folder relative to this settings file
@@ -125,29 +125,46 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-# This allows Django to seamlessly upload files to Supabase
+# # This allows Django to seamlessly upload files to Supabase
+# STORAGES = {
+#     "default": {
+#         "BACKEND": "storages.backends.s3.S3Storage",
+#         "OPTIONS": {
+#             "access_key": get_secret("SUPABASE_ACCESS_KEY_ID"),
+#             "secret_key": get_secret("SUPABASE_SECRET_ACCESS_KEY"),
+#             "bucket_name": get_secret("SUPABASE_BUCKET_NAME"),
+#             "endpoint_url": get_secret("SUPABASE_ENDPOINT_URL"),
+#             "region_name": "us-east-1",
+#             "default_acl": "public-read",
+#             "querystring_auth": False,
+#             "object_parameters": {
+#                 "CacheControl": "max-age=86400",
+#             },
+#             # ==============================================
+#             # 🔥 CRITICAL FIXES FOR SUPABASE 500 ERROR 🔥
+#             # ==============================================
+#             "addressing_style": "path",  # Forces https://supabase.co/bucket/file
+#             "signature_version": "s3v4", # Use the modern signature standard
+#         },
+#     },
+#     "staticfiles": {
+#         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+#     },
+# }
+
+# REPLACE THE ENTIRE "STORAGES" BLOCK WITH THIS:
+MEDIA_URL = '/1media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'server/1media')
+
+# This tells Django: "Save files to the folder above, not to the cloud"
 STORAGES = {
     "default": {
-        "BACKEND": "storages.backends.s3.S3Storage",
-        "OPTIONS": {
-            "access_key": get_secret("SUPABASE_ACCESS_KEY_ID"),
-            "secret_key": get_secret("SUPABASE_SECRET_ACCESS_KEY"),
-            "bucket_name": get_secret("SUPABASE_BUCKET_NAME"),
-            "endpoint_url": get_secret("SUPABASE_ENDPOINT_URL"),
-            "region_name": "us-east-1",
-            "default_acl": "public-read",
-            "querystring_auth": False,
-            "object_parameters": {
-                "CacheControl": "max-age=86400",
-            },
-        },
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
-
-
 # ==========================================
 # 6. CORS SETTINGS
 # ==========================================
@@ -156,6 +173,3 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
 CORS_ALLOW_CREDENTIALS = True
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-]

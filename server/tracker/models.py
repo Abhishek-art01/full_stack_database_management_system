@@ -84,7 +84,6 @@ class T3Locality(models.Model):
         managed = False
 
 
-from django.db import models
 
 class VehicleList(models.Model):
     # Standard Fields
