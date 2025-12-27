@@ -1,9 +1,6 @@
 from django.urls import path
 from . import views
 
-from django.urls import path
-from . import views
-
 urlpatterns = [
     path('api/dashboard-data/', views.dashboard_data, name='dashboard_data'),
     path('api/localities/', views.locality_list_api, name='locality_list_api'),
